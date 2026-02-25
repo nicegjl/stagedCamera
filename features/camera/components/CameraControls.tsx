@@ -1,14 +1,129 @@
 /**
- * 相机控制栏占位
- * 后续实现：快门、前后摄切换、闪光、变焦等，仅消费 useCamera()，不持有业务逻辑
+ * 相机控制栏：快门、前后摄切换、闪光、拍照/录像切换
+ * 仅消费 useCamera()，拍照由父组件通过 onShutterPress 触发
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { useCamera } from '../context/CameraContext';
 
-export function CameraControls() {
-  const { mode, setMode, flash, setFlash } = useCamera();
-  return <View />;
+export interface CameraControlsProps {
+  /** 相机是否就绪（未就绪时禁用快门） */
+  cameraReady?: boolean;
+  /** 按下快门（拍照模式）或开始/停止录像 */
+  onShutterPress?: () => void;
+  /** 是否正在录像 */
+  isRecording?: boolean;
 }
+
+const FLASH_ORDER: Array<'off' | 'on' | 'auto'> = ['off', 'on', 'auto'];
+
+export function CameraControls({
+  cameraReady = false,
+  onShutterPress,
+  isRecording = false,
+}: CameraControlsProps) {
+  const colorScheme = useColorScheme();
+  const { mode, setMode, facing, setFacing, flash, setFlash } = useCamera();
+  const tint = Colors[colorScheme ?? 'light'].tint;
+  const iconColor = Colors[colorScheme ?? 'light'].icon;
+
+  const cycleFlash = () => {
+    const i = FLASH_ORDER.indexOf(flash);
+    setFlash(FLASH_ORDER[(i + 1) % 3]);
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.row}>
+        <Pressable
+          style={styles.sideButton}
+          onPress={cycleFlash}
+          accessibilityLabel="闪光灯">
+          <Ionicons name={flash === 'off' ? 'flash-off' : flash === 'on' ? 'flash' : 'flash-outline'} size={24} color={iconColor} />
+        </Pressable>
+
+        <Pressable
+          style={[styles.shutter, { borderColor: tint }]}
+          onPress={onShutterPress}
+          disabled={!cameraReady}
+          accessibilityLabel={mode === 'photo' ? '拍照' : isRecording ? '停止录像' : '开始录像'}>
+          {mode === 'video' && isRecording ? (
+            <View style={[styles.recordDot, { backgroundColor: tint }]} />
+          ) : (
+            <View style={[styles.shutterInner, cameraReady && { borderColor: tint }]} />
+          )}
+        </Pressable>
+
+        <Pressable
+          style={styles.sideButton}
+          onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
+          accessibilityLabel="切换前后摄像头">
+          <Ionicons name="camera-reverse" size={28} color={iconColor} />
+        </Pressable>
+      </View>
+
+      <View style={styles.modeRow}>
+        <Pressable onPress={() => setMode('photo')} style={styles.modeOption}>
+          <Ionicons name="camera" size={20} color={mode === 'photo' ? tint : iconColor} />
+        </Pressable>
+        <Pressable onPress={() => setMode('video')} style={styles.modeOption}>
+          <Ionicons name="videocam" size={22} color={mode === 'video' ? tint : iconColor} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sideButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  recordDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+    marginTop: 16,
+  },
+  modeOption: {
+    padding: 8,
+  },
+});

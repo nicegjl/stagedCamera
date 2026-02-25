@@ -1,0 +1,24 @@
+schema: spec-driven
+
+# Specs 目录：openspec/specs/
+# - template-api.yaml：模版 API（列表/详情/筛选），与 types/template、PRD 4.3 一致
+# - app-state-schemas.yaml：相机状态、模版叠加状态等数据结构，与 types/camera、Context 一致
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

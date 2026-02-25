@@ -5,6 +5,9 @@
 /** 拍摄模式 */
 export type CameraMode = 'photo' | 'video';
 
+/** 前后摄像头 */
+export type CameraFacing = 'back' | 'front';
+
 /** 闪光灯模式 */
 export type FlashMode = 'off' | 'on' | 'auto';
 

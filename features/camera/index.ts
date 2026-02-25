@@ -6,4 +6,6 @@
 export { CameraProvider, useCamera, useCameraOptional } from './context/CameraContext';
 export type { CameraContextValue } from './context/CameraContext';
 export { CameraControls } from './components/CameraControls';
+export { CameraPreview } from './components/CameraPreview';
+export type { CameraPreviewProps } from './components/CameraPreview';
 export { useCameraPermission } from './hooks/useCameraPermission';

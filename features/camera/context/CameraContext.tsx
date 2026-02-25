@@ -5,10 +5,11 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-import type { AspectRatio, CameraMode, FlashMode, TimerOption } from '@/types';
+import type { AspectRatio, CameraFacing, CameraMode, FlashMode, TimerOption } from '@/types';
 
 export interface CameraContextValue {
   mode: CameraMode;
+  facing: CameraFacing;
   flash: FlashMode;
   aspectRatio: AspectRatio;
   timer: TimerOption;
@@ -16,6 +17,7 @@ export interface CameraContextValue {
   zoom: number;
   exposureBias: number;
   setMode: (m: CameraMode) => void;
+  setFacing: (f: CameraFacing) => void;
   setFlash: (f: FlashMode) => void;
   setAspectRatio: (a: AspectRatio) => void;
   setTimer: (t: TimerOption) => void;
@@ -26,6 +28,7 @@ export interface CameraContextValue {
 
 const defaultState = {
   mode: 'photo' as CameraMode,
+  facing: 'back' as CameraFacing,
   flash: 'auto' as FlashMode,
   aspectRatio: '4:3' as AspectRatio,
   timer: 0 as TimerOption,
@@ -38,6 +41,7 @@ const CameraContext = createContext<CameraContextValue | null>(null);
 
 export function CameraProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<CameraMode>(defaultState.mode);
+  const [facing, setFacing] = useState<CameraFacing>(defaultState.facing);
   const [flash, setFlash] = useState<FlashMode>(defaultState.flash);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(defaultState.aspectRatio);
   const [timer, setTimer] = useState<TimerOption>(defaultState.timer);
@@ -48,6 +52,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<CameraContextValue>(
     () => ({
       mode,
+      facing,
       flash,
       aspectRatio,
       timer,
@@ -55,6 +60,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
       zoom,
       exposureBias,
       setMode,
+      setFacing,
       setFlash,
       setAspectRatio,
       setTimer,
@@ -62,7 +68,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
       setZoom,
       setExposureBias,
     }),
-    [mode, flash, aspectRatio, timer, gridEnabled, zoom, exposureBias]
+    [mode, facing, flash, aspectRatio, timer, gridEnabled, zoom, exposureBias]
   );
 
   return <CameraContext.Provider value={value}>{children}</CameraContext.Provider>;
