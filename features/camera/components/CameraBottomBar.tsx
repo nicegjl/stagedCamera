@@ -46,7 +46,7 @@ export function CameraBottomBar({
   };
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: insets.bottom + 12 }]}>
+    <View style={[styles.wrapper]}>
       <View style={styles.bar}>
         <Pressable
           onPress={handleGalleryPress}
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 16,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,1)',
   },
   sideBtn: {
     width: 48,
