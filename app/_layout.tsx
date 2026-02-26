@@ -20,6 +20,7 @@ export default function RootLayout() {
         <TemplateProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="gallery" options={{ title: '相册' }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
           <StatusBar style="auto" />

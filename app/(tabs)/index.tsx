@@ -1,41 +1,89 @@
 /**
- * 相机页（入口页）：真实取景 + 模版叠加 + 控件
+ * 相机页：取景 + 顶部工具栏 + 底部栏（快门/相册/模版）+ 倒计时/九宫格
  */
 
-import { useCameraPermissions } from 'expo-camera';
-import { useRef, useState, useCallback } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCameraPermissions, CameraView } from 'expo-camera';
 
 import {
-  CameraControls,
+  CameraBottomBar,
   CameraPreview,
+  CameraTopBar,
+  GridOverlay,
   useCamera,
 } from '@/features/camera';
 import { TemplateOverlay } from '@/features/templates';
-import { CameraView } from 'expo-camera';
 import { ThemedView } from '@/components/themed-view';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<React.ComponentRef<typeof CameraView>>(null);
-  const { mode } = useCamera();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { mode, timer } = useCamera();
+
+  const runCountdownThenCapture = useCallback(() => {
+    const ref = cameraRef.current;
+    if (!ref || !cameraReady || mode !== 'photo') return;
+    if (timer === 0) {
+      ref.takePictureAsync({}).catch(() => {});
+      return;
+    }
+    setCountdown(timer);
+  }, [cameraReady, mode, timer]);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => {
+      if (countdown === 1) {
+        cameraRef.current?.takePictureAsync({}).catch(() => {});
+        setCountdown(0);
+      } else {
+        setCountdown((c) => c - 1);
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   const handleShutterPress = useCallback(async () => {
     const ref = cameraRef.current;
     if (!ref || !cameraReady) return;
-    try {
-      if (mode === 'photo') {
-        const result = await ref.takePictureAsync({});
-        if (result?.uri) {
-          // 可选：调用 mediaService.savePhoto(result.uri) 写入相册
-        }
-      }
-      // 录像模式后续可接 ref.record() / ref.stopRecording()
-    } catch (e) {
-      // 静默或提示
+
+    if (mode === 'photo') {
+      runCountdownThenCapture();
+      return;
     }
-  }, [cameraReady, mode]);
+
+    if (mode === 'video') {
+      try {
+        if (isRecording) {
+          ref.stopRecording?.();
+        } else {
+          setIsRecording(true);
+          ref.recordAsync?.().then(() => setIsRecording(false)).catch(() => setIsRecording(false));
+        }
+      } catch {
+        setIsRecording(false);
+      }
+    }
+  }, [cameraReady, mode, isRecording, runCountdownThenCapture]);
+
+  const handleGalleryPress = useCallback(() => {
+    router.push('/gallery' as Href);
+  }, [router]);
 
   if (permission == null) {
     return (
@@ -60,7 +108,7 @@ export default function CameraScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.preview}>
         <CameraPreview
           cameraRef={cameraRef}
@@ -68,18 +116,43 @@ export default function CameraScreen() {
           style={StyleSheet.absoluteFill}
         />
         <TemplateOverlay />
+        <GridOverlay />
+        {countdown > 0 && (
+          <View style={styles.countdownWrap}>
+            <Text style={styles.countdownText}>{countdown}</Text>
+          </View>
+        )}
       </View>
-      <CameraControls
-        cameraReady={cameraReady}
+      <CameraTopBar />
+      <CameraBottomBar
+        cameraReady={cameraReady && countdown === 0}
+        isRecording={isRecording}
         onShutterPress={handleShutterPress}
+        onGalleryPress={handleGalleryPress}
       />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  preview: { flex: 1, position: 'relative' },
+  container: {
+    flex: 1,
+  },
+  preview: {
+    flex: 1,
+    position: 'relative',
+  },
+  countdownWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  countdownText: {
+    fontSize: 80,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
