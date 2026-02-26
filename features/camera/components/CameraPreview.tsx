@@ -26,7 +26,7 @@ export interface CameraPreviewProps {
 }
 
 export function CameraPreview({ cameraRef, onCameraReady, style }: CameraPreviewProps) {
-  const { facing, flash, mode, zoom } = useCamera();
+  const { facing, flash, zoom } = useCamera();
   const [ready, setReady] = useState(false);
 
   const handleReady = useCallback(() => {
@@ -34,7 +34,7 @@ export function CameraPreview({ cameraRef, onCameraReady, style }: CameraPreview
     onCameraReady?.();
   }, [onCameraReady]);
 
-  const expoMode = mode === 'photo' ? 'picture' : 'video';
+  const expoMode = 'picture';
   const expoZoom = zoomToExpoZoom(zoom);
 
   return (

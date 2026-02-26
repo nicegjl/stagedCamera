@@ -28,6 +28,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "stagedCamera 需要访问相册以展示拍摄照片。",
+          "savePhotosPermission": "stagedCamera 需要保存照片到相册。"
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "stagedCamera 需要访问相机以进行拍照与模版取景。",

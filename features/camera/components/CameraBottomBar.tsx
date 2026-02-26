@@ -1,35 +1,30 @@
 /**
- * 相机页底部栏：左侧相册入口、中央拍摄按钮与模式切换、右侧模版入口
+ * 相机页底部栏：左侧相册入口、中央拍摄按钮、右侧模版入口
  */
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-import { useCamera } from '../context/CameraContext';
+import { useLatestMediaUri } from '@/features/gallery';
 
 export interface CameraBottomBarProps {
   cameraReady?: boolean;
-  isRecording?: boolean;
   onShutterPress?: () => void;
   onGalleryPress?: () => void;
 }
 
 export function CameraBottomBar({
   cameraReady = false,
-  isRecording = false,
   onShutterPress,
   onGalleryPress,
 }: CameraBottomBarProps) {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const { mode, setMode } = useCamera();
+  const latestUri = useLatestMediaUri();
   const tint = Colors[colorScheme ?? 'light'].tint;
   const iconColor = '#fff';
 
@@ -37,7 +32,7 @@ export function CameraBottomBar({
     if (onGalleryPress) {
       onGalleryPress();
     } else {
-      router.push('/(tabs)/templates');
+      router.push('/gallery');
     }
   };
 
@@ -52,7 +47,11 @@ export function CameraBottomBar({
           onPress={handleGalleryPress}
           style={styles.sideBtn}
           accessibilityLabel="相册">
-          <Ionicons name="images-outline" size={28} color={iconColor} />
+          {latestUri ? (
+            <Image source={{ uri: latestUri }} style={styles.thumbnail} />
+          ) : (
+            <Ionicons name="images-outline" size={28} color={iconColor} />
+          )}
         </Pressable>
 
         <View style={styles.center}>
@@ -60,21 +59,9 @@ export function CameraBottomBar({
             style={[styles.shutter, { borderColor: tint }]}
             onPress={onShutterPress}
             disabled={!cameraReady}
-            accessibilityLabel={mode === 'photo' ? '拍照' : isRecording ? '停止录像' : '开始录像'}>
-            {mode === 'video' && isRecording ? (
-              <View style={[styles.recordDot, { backgroundColor: tint }]} />
-            ) : (
-              <View style={[styles.shutterInner, cameraReady && { borderColor: tint }]} />
-            )}
+            accessibilityLabel="拍照">
+            <View style={[styles.shutterInner, cameraReady && { borderColor: tint }]} />
           </Pressable>
-          <View style={styles.modeRow}>
-            <Pressable onPress={() => setMode('photo')} style={styles.modeBtn}>
-              <Ionicons name="camera" size={20} color={mode === 'photo' ? tint : iconColor} />
-            </Pressable>
-            <Pressable onPress={() => setMode('video')} style={styles.modeBtn}>
-              <Ionicons name="videocam" size={22} color={mode === 'video' ? tint : iconColor} />
-            </Pressable>
-          </View>
         </View>
 
         <Pressable
@@ -109,6 +96,13 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    borderRadius: 6,
+  },
+  thumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   center: {
     alignItems: 'center',
@@ -127,18 +121,5 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.5)',
-  },
-  recordDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 24,
-    marginTop: 10,
-  },
-  modeBtn: {
-    padding: 6,
   },
 });

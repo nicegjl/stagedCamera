@@ -22,6 +22,7 @@ import {
   GridOverlay,
   useCamera,
 } from '@/features/camera';
+import { useGallery } from '@/features/gallery';
 import { TemplateOverlay } from '@/features/templates';
 import { ThemedView } from '@/components/themed-view';
 
@@ -29,57 +30,50 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<React.ComponentRef<typeof CameraView>>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { mode, timer } = useCamera();
+  const { timer } = useCamera();
+  const { savePhoto } = useGallery();
 
   const runCountdownThenCapture = useCallback(() => {
     const ref = cameraRef.current;
-    if (!ref || !cameraReady || mode !== 'photo') return;
+    if (!ref || !cameraReady) return;
     if (timer === 0) {
-      ref.takePictureAsync({}).catch(() => {});
+      ref
+        .takePictureAsync({})
+        .then((result) => {
+          if (result?.uri) savePhoto(result.uri);
+        })
+        .catch(() => {});
       return;
     }
     setCountdown(timer);
-  }, [cameraReady, mode, timer]);
+  }, [cameraReady, timer, savePhoto]);
 
   useEffect(() => {
     if (countdown <= 0) return;
     const t = setTimeout(() => {
       if (countdown === 1) {
-        cameraRef.current?.takePictureAsync({}).catch(() => {});
+        cameraRef.current
+          ?.takePictureAsync({})
+          .then((result) => {
+            if (result?.uri) savePhoto(result.uri);
+          })
+          .catch(() => {});
         setCountdown(0);
       } else {
         setCountdown((c) => c - 1);
       }
     }, 1000);
     return () => clearTimeout(t);
-  }, [countdown]);
+  }, [countdown, savePhoto]);
 
-  const handleShutterPress = useCallback(async () => {
+  const handleShutterPress = useCallback(() => {
     const ref = cameraRef.current;
     if (!ref || !cameraReady) return;
-
-    if (mode === 'photo') {
-      runCountdownThenCapture();
-      return;
-    }
-
-    if (mode === 'video') {
-      try {
-        if (isRecording) {
-          ref.stopRecording?.();
-        } else {
-          setIsRecording(true);
-          ref.recordAsync?.().then(() => setIsRecording(false)).catch(() => setIsRecording(false));
-        }
-      } catch {
-        setIsRecording(false);
-      }
-    }
-  }, [cameraReady, mode, isRecording, runCountdownThenCapture]);
+    runCountdownThenCapture();
+  }, [cameraReady, runCountdownThenCapture]);
 
   const handleGalleryPress = useCallback(() => {
     router.push('/gallery' as Href);
@@ -126,7 +120,6 @@ export default function CameraScreen() {
       <CameraTopBar />
       <CameraBottomBar
         cameraReady={cameraReady && countdown === 0}
-        isRecording={isRecording}
         onShutterPress={handleShutterPress}
         onGalleryPress={handleGalleryPress}
       />

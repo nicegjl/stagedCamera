@@ -15,10 +15,8 @@ import { useCamera } from '../context/CameraContext';
 export interface CameraControlsProps {
   /** 相机是否就绪（未就绪时禁用快门） */
   cameraReady?: boolean;
-  /** 按下快门（拍照模式）或开始/停止录像 */
+  /** 按下快门拍照 */
   onShutterPress?: () => void;
-  /** 是否正在录像 */
-  isRecording?: boolean;
 }
 
 const FLASH_ORDER: Array<'off' | 'on' | 'auto'> = ['off', 'on', 'auto'];
@@ -26,10 +24,9 @@ const FLASH_ORDER: Array<'off' | 'on' | 'auto'> = ['off', 'on', 'auto'];
 export function CameraControls({
   cameraReady = false,
   onShutterPress,
-  isRecording = false,
 }: CameraControlsProps) {
   const colorScheme = useColorScheme();
-  const { mode, setMode, facing, setFacing, flash, setFlash } = useCamera();
+  const { facing, setFacing, flash, setFlash } = useCamera();
   const tint = Colors[colorScheme ?? 'light'].tint;
   const iconColor = Colors[colorScheme ?? 'light'].icon;
 
@@ -52,12 +49,8 @@ export function CameraControls({
           style={[styles.shutter, { borderColor: tint }]}
           onPress={onShutterPress}
           disabled={!cameraReady}
-          accessibilityLabel={mode === 'photo' ? '拍照' : isRecording ? '停止录像' : '开始录像'}>
-          {mode === 'video' && isRecording ? (
-            <View style={[styles.recordDot, { backgroundColor: tint }]} />
-          ) : (
-            <View style={[styles.shutterInner, cameraReady && { borderColor: tint }]} />
-          )}
+          accessibilityLabel="拍照">
+          <View style={[styles.shutterInner, cameraReady && { borderColor: tint }]} />
         </Pressable>
 
         <Pressable
@@ -65,15 +58,6 @@ export function CameraControls({
           onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
           accessibilityLabel="切换前后摄像头">
           <Ionicons name="camera-reverse" size={28} color={iconColor} />
-        </Pressable>
-      </View>
-
-      <View style={styles.modeRow}>
-        <Pressable onPress={() => setMode('photo')} style={styles.modeOption}>
-          <Ionicons name="camera" size={20} color={mode === 'photo' ? tint : iconColor} />
-        </Pressable>
-        <Pressable onPress={() => setMode('video')} style={styles.modeOption}>
-          <Ionicons name="videocam" size={22} color={mode === 'video' ? tint : iconColor} />
         </Pressable>
       </View>
     </View>
@@ -111,19 +95,5 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.5)',
-  },
-  recordDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 32,
-    marginTop: 16,
-  },
-  modeOption: {
-    padding: 8,
   },
 });
