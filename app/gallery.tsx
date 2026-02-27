@@ -2,19 +2,23 @@
  * 相册页：默认列表，点击进全屏大图（左右滑动），长按/批量保存到系统相册与删除
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { GalleryAsset } from '@/features/gallery';
 import {
   GalleryDetailView,
   GalleryThumbnailList,
-  useGallery,
-  useMediaList,
   requestGalleryPermission,
   savePhotoToLibrary,
+  useGallery,
+  useMediaList,
 } from '@/features/gallery';
-import type { GalleryAsset } from '@/features/gallery';
+
+const ICON_COLOR = '#fff';
+const ICON_SIZE = 24;
 
 export default function GalleryScreen() {
   const router = useRouter();
@@ -110,50 +114,53 @@ export default function GalleryScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => {
-              if (selectionMode) {
-                setSelectionMode(false);
-                setSelectedIds(new Set());
-              } else {
-                router.back();
-              }
-            }}
-            style={styles.headerBtn}>
-            <Text style={styles.headerBtnText}>{selectionMode ? '取消' : '返回'}</Text>
-          </Pressable>
+          <View style={styles.headerLeft}>
+            <Pressable
+              onPress={() => {
+                if (selectionMode) {
+                  setSelectionMode(false);
+                  setSelectedIds(new Set());
+                } else {
+                  router.back();
+                }
+              }}
+              style={styles.headerIconBtn}
+              hitSlop={8}>
+              <Ionicons name="chevron-back" size={ICON_SIZE} color={ICON_COLOR} />
+            </Pressable>
+            {/* {!selectionMode && (
+              <Text style={styles.headerBtnText}>相机</Text>
+            )} */}
+          </View>
           <Text style={styles.headerTitle}>
             {selectionMode ? `已选 ${selectedIds.size} 张` : '相册'}
           </Text>
-          {!selectionMode ? (
-            <Pressable onPress={() => setSelectionMode(true)} style={styles.headerBtn}>
-              <Text style={styles.headerBtnText}>选择</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.headerBtn} />
-          )}
-        </View>
-        {selectionMode && selectedIds.size > 0 && (
-          <View style={styles.batchBar}>
-            {batchSaveProgress == null ? (
+          <View style={styles.headerRight}>
+            {!selectionMode ? (
+              <Pressable onPress={() => setSelectionMode(true)} style={styles.headerIconBtn} hitSlop={8}>
+                <Text style={styles.headerBtnText}>选择</Text>
+              </Pressable>
+            ) : batchSaveProgress != null ? (
+              <View style={styles.headerProgress}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.headerProgressText}>
+                  {batchSaveProgress.current}/{batchSaveProgress.total}
+                </Text>
+              </View>
+            ) : selectedIds.size > 0 ? (
               <>
-                <Pressable onPress={handleBatchSave} style={styles.batchBtn}>
-                  <Text style={styles.batchBtnText}>下载到系统相册</Text>
+                <Pressable onPress={handleBatchSave} style={styles.headerIconBtn} hitSlop={8}>
+                  <Ionicons name="download-outline" size={ICON_SIZE} color={ICON_COLOR} />
                 </Pressable>
-                <Pressable onPress={handleBatchDelete} style={[styles.batchBtn, styles.batchBtnDanger]}>
-                  <Text style={styles.batchBtnText}>删除</Text>
+                <Pressable onPress={handleBatchDelete} style={styles.headerIconBtn} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={ICON_SIZE} color={ICON_COLOR} />
                 </Pressable>
               </>
             ) : (
-              <View style={styles.batchProgress}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.batchProgressText}>
-                  正在保存 {batchSaveProgress.current}/{batchSaveProgress.total} 张…
-                </Text>
-              </View>
+              <View style={styles.headerIconBtn} />
             )}
           </View>
-        )}
+        </View>
         <GalleryThumbnailList
           assets={assets}
           onSelectAsset={handleSelectAsset}
@@ -192,9 +199,20 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  headerBtn: {
-    padding: 8,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     minWidth: 48,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 48,
+  },
+  headerIconBtn: {
+    padding: 8,
   },
   headerBtnText: {
     color: '#fff',
@@ -205,32 +223,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  batchBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  batchBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#0a7ea4',
-    borderRadius: 8,
-  },
-  batchBtnDanger: {
-    backgroundColor: '#c53030',
-  },
-  batchBtnText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  batchProgress: {
+  headerProgress: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  batchProgressText: {
+  headerProgressText: {
     color: '#fff',
     fontSize: 14,
   },
