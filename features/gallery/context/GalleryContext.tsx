@@ -1,15 +1,16 @@
 /**
- * 相册状态：媒体列表、刷新、保存新照片
+ * 相册状态：应用媒体库列表、刷新、保存新照片、删除
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import type { GalleryAsset } from '../lib/mediaLibrary';
 import {
-  getRecentAssets,
+  addToAppLibrary,
+  deleteFromAppLibrary as deleteFromAppLibraryApi,
+  getAppAssets,
   requestGalleryPermission,
-  savePhotoToLibrary,
 } from '../lib/mediaLibrary';
+import type { GalleryAsset } from '../lib/mediaLibrary';
 
 export interface GalleryContextValue {
   assets: GalleryAsset[];
@@ -17,6 +18,7 @@ export interface GalleryContextValue {
   permissionGranted: boolean | null;
   refresh: () => Promise<void>;
   savePhoto: (localUri: string) => Promise<boolean>;
+  deleteFromAppLibrary: (ids: string[]) => Promise<void>;
   requestPermission: () => Promise<boolean>;
 }
 
@@ -30,9 +32,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     setIsLoading(true);
     try {
-      const granted = await requestGalleryPermission();
-      setPermissionGranted(granted);
-      const { assets: list } = await getRecentAssets();
+      const list = await getAppAssets();
       setAssets(list);
     } finally {
       setIsLoading(false);
@@ -40,12 +40,17 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const savePhoto = useCallback(async (localUri: string): Promise<boolean> => {
-    const asset = await savePhotoToLibrary(localUri);
-    if (asset) {
-      setAssets((prev) => [asset, ...prev]);
+    const item = await addToAppLibrary(localUri);
+    if (item) {
+      setAssets((prev) => [item, ...prev]);
       return true;
     }
     return false;
+  }, []);
+
+  const deleteFromAppLibrary = useCallback(async (ids: string[]) => {
+    await deleteFromAppLibraryApi(ids);
+    setAssets((prev) => prev.filter((a) => !ids.includes(a.id)));
   }, []);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -54,7 +59,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     return granted;
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     refresh();
   }, [refresh]);
 
@@ -65,9 +70,10 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
       permissionGranted,
       refresh,
       savePhoto,
+      deleteFromAppLibrary,
       requestPermission,
     }),
-    [assets, isLoading, permissionGranted, refresh, savePhoto, requestPermission]
+    [assets, isLoading, permissionGranted, refresh, savePhoto, deleteFromAppLibrary, requestPermission]
   );
 
   return <GalleryContext.Provider value={value}>{children}</GalleryContext.Provider>;

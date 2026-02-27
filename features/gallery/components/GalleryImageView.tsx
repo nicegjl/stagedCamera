@@ -1,5 +1,6 @@
 /**
  * 单张资源大图：双指缩放（最小比例 1）、长按保存到系统相册
+ * @deprecated 遗留组件，相册主流程请使用 GalleryDetailView（全屏横向滑动、多图浏览）
  */
 
 import * as MediaLibrary from 'expo-media-library';

@@ -15,7 +15,10 @@ export {
   requestGalleryPermission,
   savePhotoToLibrary,
 } from './lib/mediaLibrary';
+/** @deprecated 遗留，推荐使用 GalleryDetailView */
 export { GalleryImageView } from './components/GalleryImageView';
 export type { GalleryImageViewProps } from './components/GalleryImageView';
+export { GalleryDetailView } from './components/GalleryDetailView';
+export type { GalleryDetailViewProps } from './components/GalleryDetailView';
 export { GalleryThumbnailList } from './components/GalleryThumbnailList';
 export type { GalleryThumbnailListProps } from './components/GalleryThumbnailList';

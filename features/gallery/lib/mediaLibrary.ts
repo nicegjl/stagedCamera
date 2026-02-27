@@ -1,39 +1,26 @@
 /**
- * 封装 expo-media-library：权限、保存照片、按时间读取资源
- * iOS 返回的 ph:// URI 无法直接用于 <Image>，需通过 getAssetInfoAsync 取 localUri
+ * 相册媒体库：应用媒体库（主数据源）+ 系统相册保存（仅写入）
+ * 应用媒体资源为本地文件 URI，可直接用于 <Image>
  */
 
 import * as MediaLibrary from 'expo-media-library';
 
-const SORT_CREATION_DESC: [MediaLibrary.SortByKey, boolean][] = [
-  [MediaLibrary.SortBy.creationTime, false],
-];
+import {
+  addToAppLibrary,
+  deleteFromAppLibrary as deleteFromAppLibraryImpl,
+  getAppAssets,
+  getLatestAppAssetUri,
+  type AppMediaItem,
+} from './appMediaLibrary';
 
-/** 内存缓存：asset.id -> 可显示的 file URI，避免重复请求 getAssetInfoAsync */
-const displayableUriCache = new Map<string, string>();
-
-export type GalleryAsset = MediaLibrary.Asset;
+/** 相册内使用的资源类型（当前即应用媒体库项） */
+export type GalleryAsset = AppMediaItem;
 
 /**
  * 返回可用于 <Image source={{ uri }} /> 的 URI。
- * iOS 上 asset.uri 为 ph:// 时改用 getAssetInfoAsync 的 localUri，并写入缓存。
+ * 应用媒体库的 uri 已是本地文件路径，直接返回。
  */
 export async function getDisplayableUri(asset: GalleryAsset): Promise<string> {
-  const cached = displayableUriCache.get(asset.id);
-  if (cached) return cached;
-
-  if (asset.uri.startsWith('ph://')) {
-    try {
-      const info = await MediaLibrary.getAssetInfoAsync(asset);
-      const uri = info.localUri ?? asset.uri;
-      displayableUriCache.set(asset.id, uri);
-      return uri;
-    } catch {
-      return asset.uri;
-    }
-  }
-
-  displayableUriCache.set(asset.id, asset.uri);
   return asset.uri;
 }
 
@@ -48,7 +35,7 @@ export async function getGalleryPermissionStatus(): Promise<'granted' | 'denied'
 }
 
 /**
- * 将本地照片 URI 保存到媒体库
+ * 将本地照片保存到系统相册（用于「下载到系统相册」）
  */
 export async function savePhotoToLibrary(localUri: string): Promise<MediaLibrary.Asset | null> {
   const granted = await requestGalleryPermission();
@@ -62,29 +49,24 @@ export async function savePhotoToLibrary(localUri: string): Promise<MediaLibrary
 }
 
 /**
- * 获取最近拍摄的资源（按创建时间倒序）
+ * 获取应用媒体库列表（按创建时间倒序）
  */
-export async function getRecentAssets(
-  first: number = 100
-): Promise<{ assets: GalleryAsset[]; hasNextPage: boolean }> {
-  const granted = await requestGalleryPermission();
-  if (!granted) return { assets: [], hasNextPage: false };
-  try {
-    const result = await MediaLibrary.getAssetsAsync({
-      first,
-      sortBy: SORT_CREATION_DESC,
-      mediaType: MediaLibrary.MediaType.photo,
-    });
-    return { assets: result.assets, hasNextPage: result.hasNextPage };
-  } catch {
-    return { assets: [], hasNextPage: false };
-  }
+export async function getRecentAssets(): Promise<{ assets: GalleryAsset[]; hasNextPage: boolean }> {
+  const assets = await getAppAssets();
+  return { assets, hasNextPage: false };
 }
 
 /**
  * 获取最新一张资源的 URI（用于缩略图）
  */
 export async function getLatestAssetUri(): Promise<string | null> {
-  const { assets } = await getRecentAssets(1);
-  return assets[0]?.uri ?? null;
+  return getLatestAppAssetUri();
+}
+
+/** 保存到应用媒体库 */
+export { addToAppLibrary, getAppAssets } from './appMediaLibrary';
+
+/** 从应用媒体库删除 */
+export async function deleteFromAppLibrary(ids: string[]): Promise<void> {
+  return deleteFromAppLibraryImpl(ids);
 }
