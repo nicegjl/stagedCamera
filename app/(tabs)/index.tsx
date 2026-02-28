@@ -6,6 +6,8 @@ import { useRouter, type Href } from 'expo-router';
 import { useRef, useState, useCallback, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
+  Image,
   Linking,
   Pressable,
   StyleSheet,
@@ -14,6 +16,45 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCameraPermissions, CameraView } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
+import type { AspectRatio } from '@/types';
+
+function getImageSize(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+}
+
+/** 竖屏下有效比例：4:3→3:4，16:9→9:16，1:1→1 */
+function getAspectRatioNumber(ar: AspectRatio): number {
+  if (ar === '4:3') return 3 / 4;
+  if (ar === '16:9') return 9 / 16;
+  return 1; // 1:1
+}
+
+async function cropToAspectRatio(uri: string, aspectRatio: AspectRatio): Promise<string> {
+  const ratio = getAspectRatioNumber(aspectRatio);
+  const { width: w, height: h } = await getImageSize(uri);
+  let originX: number, originY: number, width: number, height: number;
+  if (w / h > ratio) {
+    width = Math.round(h * ratio);
+    height = h;
+    originX = Math.round((w - width) / 2);
+    originY = 0;
+  } else {
+    width = w;
+    height = Math.round(w / ratio);
+    originX = 0;
+    originY = Math.round((h - height) / 2);
+  }
+  const ctx = ImageManipulator.ImageManipulator.manipulate(uri);
+  ctx.crop({ originX, originY, width, height });
+  const rendered = await ctx.renderAsync();
+  const result = await rendered.saveAsync({
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  return result.uri;
+}
 
 import {
   CameraBottomBar,
@@ -33,8 +74,33 @@ export default function CameraScreen() {
   const cameraRef = useRef<React.ComponentRef<typeof CameraView>>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { timer } = useCamera();
+  const { timer, aspectRatio } = useCamera();
   const { savePhoto } = useGallery();
+  const windowSize = Dimensions.get('window');
+  const [previewLayout, setPreviewLayout] = useState<{ width: number; height: number }>({
+    width: windowSize.width,
+    height: windowSize.height,
+  });
+
+  const previewFrameStyle = (() => {
+    const { width: w, height: h } = previewLayout;
+    const ratio = getAspectRatioNumber(aspectRatio);
+    let fw: number, fh: number;
+    if (w / h > ratio) {
+      fh = h;
+      fw = h * ratio;
+    } else {
+      fw = w;
+      fh = w / ratio;
+    }
+    return {
+      position: 'absolute' as const,
+      left: (w - fw) / 2,
+      top: (h - fh) / 2,
+      width: fw,
+      height: fh,
+    };
+  })();
 
   const runCountdownThenCapture = useCallback(() => {
     const ref = cameraRef.current;
@@ -42,14 +108,20 @@ export default function CameraScreen() {
     if (timer === 0) {
       ref
         .takePictureAsync({})
-        .then((result) => {
-          if (result?.uri) savePhoto(result.uri);
+        .then(async (result) => {
+          if (!result?.uri) return;
+          try {
+            const finalUri = await cropToAspectRatio(result.uri, aspectRatio);
+            savePhoto(finalUri);
+          } catch {
+            savePhoto(result.uri);
+          }
         })
         .catch(() => {});
       return;
     }
     setCountdown(timer);
-  }, [cameraReady, timer, savePhoto]);
+  }, [cameraReady, timer, aspectRatio, savePhoto]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -57,8 +129,14 @@ export default function CameraScreen() {
       if (countdown === 1) {
         cameraRef.current
           ?.takePictureAsync({})
-          .then((result) => {
-            if (result?.uri) savePhoto(result.uri);
+          .then(async (result) => {
+            if (!result?.uri) return;
+            try {
+              const finalUri = await cropToAspectRatio(result.uri, aspectRatio);
+              savePhoto(finalUri);
+            } catch {
+              savePhoto(result.uri);
+            }
           })
           .catch(() => {});
         setCountdown(0);
@@ -67,7 +145,7 @@ export default function CameraScreen() {
       }
     }, 1000);
     return () => clearTimeout(t);
-  }, [countdown, savePhoto]);
+  }, [countdown, aspectRatio, savePhoto]);
 
   const handleShutterPress = useCallback(() => {
     const ref = cameraRef.current;
@@ -103,14 +181,23 @@ export default function CameraScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.preview}>
-        <CameraPreview
-          cameraRef={cameraRef}
-          onCameraReady={() => setCameraReady(true)}
-          style={StyleSheet.absoluteFill}
-        />
-        <TemplateOverlay />
-        <GridOverlay />
+      <View
+        style={styles.preview}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          setPreviewLayout((prev) =>
+            prev.width === width && prev.height === height ? prev : { width, height }
+          );
+        }}>
+        <View style={[styles.previewFrame, previewFrameStyle]}>
+            <CameraPreview
+              cameraRef={cameraRef}
+              onCameraReady={() => setCameraReady(true)}
+              style={StyleSheet.absoluteFill}
+            />
+            <TemplateOverlay />
+            <GridOverlay />
+          </View>
         {countdown > 0 && (
           <View style={styles.countdownWrap}>
             <Text style={styles.countdownText}>{countdown}</Text>
@@ -134,6 +221,9 @@ const styles = StyleSheet.create({
   preview: {
     flex: 1,
     position: 'relative',
+  },
+  previewFrame: {
+    overflow: 'hidden',
   },
   countdownWrap: {
     ...StyleSheet.absoluteFillObject,

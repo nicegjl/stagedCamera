@@ -15,7 +15,7 @@ export interface TemplateFigure {
 }
 
 /** 模版推荐画幅 */
-export type TemplateAspectRatio = '4:3' | '16:9' | '1:1' | 'full';
+export type TemplateAspectRatio = '4:3' | '16:9' | '1:1';
 
 /** 分类维度（可扩展） */
 export type TemplateCategoryId =

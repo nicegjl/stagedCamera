@@ -11,8 +11,8 @@ export type CameraFacing = 'back' | 'front';
 /** 闪光灯模式 */
 export type FlashMode = 'off' | 'on' | 'auto';
 
-/** 画幅比例 */
-export type AspectRatio = '4:3' | '16:9' | '1:1' | 'full';
+/** 画幅比例（竖屏下 4:3→3:4、16:9→9:16） */
+export type AspectRatio = '4:3' | '16:9' | '1:1';
 
 /** 倒计时秒数 */
 export type TimerOption = 0 | 3 | 10;

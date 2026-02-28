@@ -16,7 +16,7 @@ import { useCamera } from '../context/CameraContext';
 const FLASH_ORDER: Array<'off' | 'on' | 'auto'> = ['off', 'on', 'auto'];
 const TIMER_OPTIONS: TimerOption[] = [0, 3, 10];
 const ZOOM_OPTIONS = [0.5, 1, 2];
-const ASPECT_OPTIONS: AspectRatio[] = ['4:3', '16:9', '1:1', 'full'];
+const ASPECT_OPTIONS: AspectRatio[] = ['4:3', '16:9', '1:1'];
 
 export function CameraTopBar() {
   const insets = useSafeAreaInsets();
