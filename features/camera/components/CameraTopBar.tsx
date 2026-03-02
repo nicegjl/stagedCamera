@@ -1,5 +1,5 @@
 /**
- * 相机页顶部辅助工具栏：闪光、翻转、倒计时、变焦、画幅、九宫格
+ * 相机页顶部辅助工具栏：闪光、翻转、倒计时、画幅、九宫格（变焦由底部刻度条与双指捏合控制）
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,6 @@ import { useCamera } from '../context/CameraContext';
 
 const FLASH_ORDER: Array<'off' | 'on' | 'auto'> = ['off', 'on', 'auto'];
 const TIMER_OPTIONS: TimerOption[] = [0, 3, 10];
-const ZOOM_OPTIONS = [0.5, 1, 2];
 const ASPECT_OPTIONS: AspectRatio[] = ['4:3', '16:9', '1:1'];
 
 export function CameraTopBar() {
@@ -28,8 +27,6 @@ export function CameraTopBar() {
     setFacing,
     timer,
     setTimer,
-    zoom,
-    setZoom,
     aspectRatio,
     setAspectRatio,
     gridEnabled,
@@ -47,11 +44,6 @@ export function CameraTopBar() {
   const cycleTimer = () => {
     const i = TIMER_OPTIONS.indexOf(timer);
     setTimer(TIMER_OPTIONS[(i + 1) % TIMER_OPTIONS.length]);
-  };
-
-  const cycleZoom = () => {
-    const i = ZOOM_OPTIONS.indexOf(zoom);
-    setZoom(ZOOM_OPTIONS[(i + 1) % ZOOM_OPTIONS.length]);
   };
 
   const cycleAspect = () => {
@@ -80,10 +72,6 @@ export function CameraTopBar() {
         <Pressable onPress={cycleTimer} style={styles.iconBtn} accessibilityLabel="倒计时">
           <Ionicons name="timer-outline" size={22} color={iconColor} />
           <Text style={styles.smallLabel}>{timer === 0 ? '关' : `${timer}s`}</Text>
-        </Pressable>
-
-        <Pressable onPress={cycleZoom} style={styles.iconBtn} accessibilityLabel="变焦">
-          <Text style={styles.zoomLabel}>{zoom}x</Text>
         </Pressable>
 
         <Pressable onPress={cycleAspect} style={styles.iconBtn} accessibilityLabel="画幅">
@@ -131,11 +119,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#fff',
     marginTop: 2,
-  },
-  zoomLabel: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
   },
   aspectLabel: {
     fontSize: 11,

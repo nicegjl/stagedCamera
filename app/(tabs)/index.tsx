@@ -3,7 +3,7 @@
  */
 
 import { useRouter, type Href } from 'expo-router';
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,6 +14,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCameraPermissions, CameraView } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -60,8 +62,10 @@ import {
   CameraBottomBar,
   CameraPreview,
   CameraTopBar,
+  DEFAULT_MAX_ZOOM,
   GridOverlay,
   useCamera,
+  ZoomScaleBar,
 } from '@/features/camera';
 import { useGallery } from '@/features/gallery';
 import { TemplateOverlay } from '@/features/templates';
@@ -74,8 +78,29 @@ export default function CameraScreen() {
   const cameraRef = useRef<React.ComponentRef<typeof CameraView>>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { timer, aspectRatio } = useCamera();
+  const { timer, aspectRatio, zoom, setZoom } = useCamera();
   const { savePhoto } = useGallery();
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const initialZoomShared = useSharedValue(1);
+  const applyPinchZoom = useCallback(
+    (scale: number, isStart: boolean) => {
+      if (isStart) initialZoomShared.value = zoomRef.current;
+      const value = initialZoomShared.value * scale;
+      setZoom(Math.max(1, Math.min(DEFAULT_MAX_ZOOM, value)));
+    },
+    [setZoom, initialZoomShared]
+  );
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      'worklet';
+      runOnJS(applyPinchZoom)(1, true);
+    })
+    .onUpdate((e) => {
+      'worklet';
+      runOnJS(applyPinchZoom)(e.scale, false);
+    })
+    .runOnJS(true);
   const windowSize = Dimensions.get('window');
   const [previewLayout, setPreviewLayout] = useState<{ width: number; height: number }>({
     width: windowSize.width,
@@ -189,7 +214,8 @@ export default function CameraScreen() {
             prev.width === width && prev.height === height ? prev : { width, height }
           );
         }}>
-        <View style={[styles.previewFrame, previewFrameStyle]}>
+        <GestureDetector gesture={pinchGesture}>
+          <View style={[styles.previewFrame, previewFrameStyle]}>
             <CameraPreview
               cameraRef={cameraRef}
               onCameraReady={() => setCameraReady(true)}
@@ -198,6 +224,7 @@ export default function CameraScreen() {
             <TemplateOverlay />
             <GridOverlay />
           </View>
+        </GestureDetector>
         {countdown > 0 && (
           <View style={styles.countdownWrap}>
             <Text style={styles.countdownText}>{countdown}</Text>
@@ -205,6 +232,12 @@ export default function CameraScreen() {
         )}
       </View>
       <CameraTopBar />
+      <ZoomScaleBar
+        zoom={zoom}
+        minZoom={1}
+        maxZoom={DEFAULT_MAX_ZOOM}
+        onZoomChange={setZoom}
+      />
       <CameraBottomBar
         cameraReady={cameraReady && countdown === 0}
         onShutterPress={handleShutterPress}
