@@ -63,6 +63,7 @@ import {
   CameraPreview,
   CameraTopBar,
   DEFAULT_MAX_ZOOM,
+  DEFAULT_MIN_ZOOM,
   GridOverlay,
   useCamera,
   ZoomScaleBar,
@@ -87,7 +88,7 @@ export default function CameraScreen() {
     (scale: number, isStart: boolean) => {
       if (isStart) initialZoomShared.value = zoomRef.current;
       const value = initialZoomShared.value * scale;
-      setZoom(Math.max(1, Math.min(DEFAULT_MAX_ZOOM, value)));
+      setZoom(Math.max(DEFAULT_MIN_ZOOM, Math.min(DEFAULT_MAX_ZOOM, value)));
     },
     [setZoom, initialZoomShared]
   );
@@ -223,6 +224,14 @@ export default function CameraScreen() {
             />
             <TemplateOverlay />
             <GridOverlay />
+            <View style={styles.zoomBarFloating}>
+              <ZoomScaleBar
+                zoom={zoom}
+                minZoom={DEFAULT_MIN_ZOOM}
+                maxZoom={DEFAULT_MAX_ZOOM}
+                onZoomChange={setZoom}
+              />
+            </View>
           </View>
         </GestureDetector>
         {countdown > 0 && (
@@ -232,12 +241,6 @@ export default function CameraScreen() {
         )}
       </View>
       <CameraTopBar />
-      <ZoomScaleBar
-        zoom={zoom}
-        minZoom={1}
-        maxZoom={DEFAULT_MAX_ZOOM}
-        onZoomChange={setZoom}
-      />
       <CameraBottomBar
         cameraReady={cameraReady && countdown === 0}
         onShutterPress={handleShutterPress}
@@ -257,6 +260,12 @@ const styles = StyleSheet.create({
   },
   previewFrame: {
     overflow: 'hidden',
+  },
+  zoomBarFloating: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   countdownWrap: {
     ...StyleSheet.absoluteFillObject,

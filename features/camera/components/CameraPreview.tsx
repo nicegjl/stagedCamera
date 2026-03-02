@@ -9,13 +9,19 @@ import { StyleSheet, View } from 'react-native';
 
 import { useCamera } from '../context/CameraContext';
 
+/** 变焦倍数范围（双指捏合、刻度条、数值展示共用，保证三者联动） */
+export const DEFAULT_MIN_ZOOM = 1;
 /** 变焦倍数上限（若 expo-camera 未提供则用此默认，后续可改为运行时获取） */
 export const DEFAULT_MAX_ZOOM = 10;
 
-/** 将我们的 zoom 倍数 (1..maxZoom) 映射为 expo 的 0–1 */
-export function zoomToExpoZoom(zoom: number, maxZoom: number = DEFAULT_MAX_ZOOM): number {
-  if (zoom <= 1) return 0;
-  return Math.min(1, (zoom - 1) / (maxZoom - 1));
+/** 将我们的 zoom 倍数 (minZoom..maxZoom) 映射为 expo 的 0–1 */
+export function zoomToExpoZoom(
+  zoom: number,
+  minZoom: number = DEFAULT_MIN_ZOOM,
+  maxZoom: number = DEFAULT_MAX_ZOOM
+): number {
+  if (zoom <= minZoom) return 0;
+  return Math.min(1, (zoom - minZoom) / (maxZoom - minZoom));
 }
 
 export interface CameraPreviewProps {
@@ -37,7 +43,7 @@ export function CameraPreview({ cameraRef, onCameraReady, style }: CameraPreview
   }, [onCameraReady]);
 
   const expoMode = 'picture';
-  const expoZoom = zoomToExpoZoom(zoom, DEFAULT_MAX_ZOOM);
+  const expoZoom = zoomToExpoZoom(zoom, DEFAULT_MIN_ZOOM, DEFAULT_MAX_ZOOM);
 
   return (
     <View style={[styles.wrapper, style]}>

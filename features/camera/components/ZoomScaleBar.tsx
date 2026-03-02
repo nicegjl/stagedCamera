@@ -1,5 +1,6 @@
 /**
- * 变焦刻度条：横向条状，展示当前 zoom，支持滑动改变 zoom（与双指捏合共用同一状态）
+ * 变焦刻度条：横向轨道 + 刻度线 + 拇指滑动；当前焦距仅作数值展示（居中）。
+ * 与双指捏合共用 CameraContext 的 zoom，三者联动：捏合/滑动刻度条会更新 zoom，数值与拇指位置随 zoom 同步。
  */
 
 import React, { useCallback, useState } from 'react';
@@ -21,14 +22,18 @@ function clampZoom(zoom: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, zoom));
 }
 
+const H_PADDING = 16;
+
 export function ZoomScaleBar({ zoom, minZoom, maxZoom, onZoomChange }: ZoomScaleBarProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
+  const [layoutWidth, setLayoutWidth] = useState(0);
+  const trackWidth = Math.max(0, layoutWidth - H_PADDING * 2);
   const range = maxZoom - minZoom;
 
   const applyZoomFromX = useCallback(
     (x: number) => {
       if (trackWidth <= 0) return;
-      const ratio = Math.max(0, Math.min(1, x / trackWidth));
+      const contentX = x - H_PADDING;
+      const ratio = Math.max(0, Math.min(1, contentX / trackWidth));
       const newZoom = clampZoom(minZoom + ratio * range, minZoom, maxZoom);
       onZoomChange(newZoom);
     },
@@ -50,14 +55,18 @@ export function ZoomScaleBar({ zoom, minZoom, maxZoom, onZoomChange }: ZoomScale
   const tickValues = [1, 2, 3, 5, 10].filter((t) => t >= minZoom && t <= maxZoom);
 
   return (
-    <View style={styles.wrapper}>
+    <View
+      style={styles.wrapper}
+      onLayout={(e) => setLayoutWidth(e.nativeEvent.layout.width)}>
+      <Text style={styles.valueCenter} accessibilityLabel={`焦距 ${formatZoom(zoom)}`}>
+        {formatZoom(zoom)}
+      </Text>
       <GestureDetector gesture={panGesture}>
-        <View
-          style={styles.track}
-          onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
-          <View style={[styles.thumb, { left: thumbPosition }]} />
+        <View style={styles.track}>
           {trackWidth > 0 && (
-            <View style={styles.tickContainer} pointerEvents="none">
+            <View
+              style={[styles.tickContainer, { width: trackWidth, height: TRACK_HEIGHT }]}
+              pointerEvents="none">
               {tickValues.map((t) => (
                 <View
                   key={t}
@@ -69,9 +78,9 @@ export function ZoomScaleBar({ zoom, minZoom, maxZoom, onZoomChange }: ZoomScale
               ))}
             </View>
           )}
+          <View style={[styles.thumb, { left: H_PADDING + thumbPosition }]} />
         </View>
       </GestureDetector>
-      <Text style={styles.label}>{formatZoom(zoom)}</Text>
     </View>
   );
 }
@@ -83,17 +92,23 @@ function formatZoom(z: number): string {
 
 const styles = StyleSheet.create({
   wrapper: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    gap: 12,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
+  valueCenter: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 6,
+  },
   track: {
-    flex: 1,
+    width: '100%',
     height: TRACK_HEIGHT,
     justifyContent: 'center',
+    position: 'relative',
   },
   thumb: {
     position: 'absolute',
@@ -102,25 +117,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#fff',
     top: (TRACK_HEIGHT - 20) / 2,
+    zIndex: 2,
   },
   tickContainer: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    pointerEvents: 'none',
+    position: 'absolute',
+    left: H_PADDING,
+    top: 0,
+    zIndex: 1,
   },
   tick: {
     position: 'absolute',
     width: 2,
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: '#fff',
     top: (TRACK_HEIGHT - 8) / 2,
     marginLeft: -1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    minWidth: 36,
-    textAlign: 'right',
   },
 });
