@@ -3,8 +3,8 @@
  * 与双指捏合共用 CameraContext 的 zoom，三者联动：捏合/滑动刻度条会更新 zoom，数值与拇指位置随 zoom 同步。
  */
 
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
@@ -22,18 +22,17 @@ function clampZoom(zoom: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, zoom));
 }
 
-const H_PADDING = 16;
+const TRACK_FRACTION = 0.6;
 
 export function ZoomScaleBar({ zoom, minZoom, maxZoom, onZoomChange }: ZoomScaleBarProps) {
-  const [layoutWidth, setLayoutWidth] = useState(0);
-  const trackWidth = Math.max(0, layoutWidth - H_PADDING * 2);
+  const { width: windowWidth } = useWindowDimensions();
+  const trackWidth = Math.max(0, windowWidth * TRACK_FRACTION);
   const range = maxZoom - minZoom;
 
   const applyZoomFromX = useCallback(
     (x: number) => {
       if (trackWidth <= 0) return;
-      const contentX = x - H_PADDING;
-      const ratio = Math.max(0, Math.min(1, contentX / trackWidth));
+      const ratio = Math.max(0, Math.min(1, x / trackWidth));
       const newZoom = clampZoom(minZoom + ratio * range, minZoom, maxZoom);
       onZoomChange(newZoom);
     },
@@ -48,45 +47,42 @@ export function ZoomScaleBar({ zoom, minZoom, maxZoom, onZoomChange }: ZoomScale
     .runOnJS(true);
 
   const thumbPosition =
-    trackWidth > 0
+    trackWidth > 0 && range > 0
       ? ((zoom - minZoom) / range) * (trackWidth - THUMB_WIDTH)
       : 0;
 
-  const tickValues = [1, 2, 3, 5, 10].filter((t) => t >= minZoom && t <= maxZoom);
+  const tickValues = [0.5, 1, 2, 3, 4, 5].filter((t) => t >= minZoom && t <= maxZoom);
 
   return (
-    <View
-      style={styles.wrapper}
-      onLayout={(e) => setLayoutWidth(e.nativeEvent.layout.width)}>
+    <View style={styles.wrapper}>
       <Text style={styles.valueCenter} accessibilityLabel={`焦距 ${formatZoom(zoom)}`}>
         {formatZoom(zoom)}
       </Text>
-      <GestureDetector gesture={panGesture}>
-        <View style={styles.track}>
-          {trackWidth > 0 && (
-            <View
-              style={[styles.tickContainer, { width: trackWidth, height: TRACK_HEIGHT }]}
-              pointerEvents="none">
-              {tickValues.map((t) => (
-                <View
-                  key={t}
-                  style={[
-                    styles.tick,
-                    { left: ((t - minZoom) / range) * (trackWidth - 2) },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-          <View style={[styles.thumb, { left: H_PADDING + thumbPosition }]} />
-        </View>
-      </GestureDetector>
+      <View style={styles.trackOuter}>
+        <GestureDetector gesture={panGesture}>
+          <View style={[styles.track, { width: trackWidth }]}>
+            {trackWidth > 0 && (
+              <View style={[styles.tickContainer, { width: trackWidth }]} pointerEvents="none">
+                {tickValues.map((t) => (
+                  <View
+                    key={t}
+                    style={[
+                      styles.tick,
+                      { left: ((t - minZoom) / range) * (trackWidth - 2) },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+            <View style={[styles.thumb, { left: thumbPosition }]} />
+          </View>
+        </GestureDetector>
+      </View>
     </View>
   );
 }
 
 function formatZoom(z: number): string {
-  if (z <= 1) return '1x';
   return z % 1 === 0 ? `${z}x` : `${z.toFixed(1)}x`;
 }
 
@@ -104,8 +100,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 6,
   },
-  track: {
+  trackOuter: {
     width: '100%',
+    alignItems: 'center',
+  },
+  track: {
     height: TRACK_HEIGHT,
     justifyContent: 'center',
     position: 'relative',
@@ -121,7 +120,7 @@ const styles = StyleSheet.create({
   },
   tickContainer: {
     position: 'absolute',
-    left: H_PADDING,
+    left: 0,
     top: 0,
     zIndex: 1,
   },

@@ -9,10 +9,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { useCamera } from '../context/CameraContext';
 
-/** 变焦倍数范围（双指捏合、刻度条、数值展示共用，保证三者联动） */
-export const DEFAULT_MIN_ZOOM = 1;
-/** 变焦倍数上限（若 expo-camera 未提供则用此默认，后续可改为运行时获取） */
-export const DEFAULT_MAX_ZOOM = 10;
+/** 逻辑变焦范围（双指捏合、刻度条、数值展示共用，保证三者联动） */
+export const DEFAULT_MIN_ZOOM = 0.5;
+export const DEFAULT_MAX_ZOOM = 5;
 
 /** 将我们的 zoom 倍数 (minZoom..maxZoom) 映射为 expo 的 0–1 */
 export function zoomToExpoZoom(

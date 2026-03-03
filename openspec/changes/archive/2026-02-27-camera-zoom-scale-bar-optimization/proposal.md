@@ -1,0 +1,45 @@
+# 优化 ZoomScaleBar 组件实现
+
+## Why
+
+在上一变更 `camera-zoom-refactor` 中，我们已经将变焦交互改为“**双指捏合 + 底部刻度条滑动**”，并引入了 `ZoomScaleBar` 组件来展示与控制变焦倍数。但当前实现仍存在几个问题：
+
+- 变焦范围逻辑上是 1–10，与产品希望的 **0.5x–5x** 范围不一致；
+- 在缩放到最小或最大的边界时，虽然数值被 clamp，但缺少清晰的一致规则说明与规范；
+- 刻度条宽度依赖父容器宽度，未统一约束为“屏幕宽度的 60%”，导致在不同设备或布局下视觉不稳定；
+- 刻度线分布规则与拇指位置虽然线性对应 zoom，但未在文档层明确约定，后续难以维护和调整。
+
+需要一个小范围的优化变更，专门规范 `ZoomScaleBar` 的 **zoom 范围、边界行为与刻度轨道宽度**，并在 OpenSpec 中固化这些约束。
+
+## What Changes
+
+1. **统一 zoom 范围为 0.5–5.0**  
+   - 在相机模块中明确约定：`LOGICAL_MIN_ZOOM = 0.5`、`LOGICAL_MAX_ZOOM = 5.0`；
+   - 双指捏合与 `ZoomScaleBar` 均基于这一对常量做 clamp，任何入口都不得产生小于 0.5 或大于 5.0 的 zoom 值。
+
+2. **边界行为明确化**  
+   - 当 zoom 已为 0.5 时，无论是继续捏合缩小，还是向左拖拽刻度条，都不会再减小 zoom；
+   - 当 zoom 已为 5.0 时，同理任何放大操作不会再继续增大；
+   - 通过统一 clamp 逻辑保证行为一致，并为后续可能的“端点视觉反馈”（如更显眼的端点刻度）预留空间。
+
+3. **刻度条宽度固定为屏幕宽度的 60% 且居中**  
+   - 使用 `useWindowDimensions` 或 `Dimensions.get('window')` 获取 `windowWidth`；
+   - 在 `ZoomScaleBar` 内部计算轨道宽度：`TRACK_WIDTH = windowWidth * 0.6`；
+   - 轨道容器在水平方向居中，浮动在相机可视区域底部；
+   - 所有刻度线和拇指位置均基于这一固定宽度计算，保证在不同设备下视觉统一。
+
+4. **刻度线等间距分布**  
+   - 在 0.5–5.0 范围内选择一组关键刻度值（如 0.5、1、2、3、4、5），并等间距分布在 60% 宽度的轨道上；
+   - 当前 zoom 的拇指位置与刻度采用同一线性比例公式计算，保证“数值、刻度线、拇指”三者严格对齐。
+
+## Capabilities
+
+### Modified Capabilities
+
+- **变焦范围控制**：zoom 在 0.5–5.0 之间连续可调，所有入口（捏合、刻度条）共享同一逻辑范围与 clamp 规则；
+- **刻度条布局**：变焦刻度条在相机可视区域底部居中浮动，刻度轨道宽度固定为屏幕宽度的 60%，刻度线在其内等间距分布。
+
+## Impact
+
+- **影响范围**：`features/camera/components/ZoomScaleBar.tsx`、`features/camera/components/CameraPreview.tsx`、`app/(tabs)/index.tsx`（统一 min/max 常量、调整刻度条宽度与布局、更新捏合 clamp）。
+- **依赖**：`Dimensions` 或 `useWindowDimensions`（获取屏幕宽度）；现有相机 zoom → expo zoom 映射逻辑继续沿用，仅逻辑范围改为 0.5–5.0。
